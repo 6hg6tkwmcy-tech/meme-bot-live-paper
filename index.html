@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Meme Bot Live - Landing page">
+  <title>Meme Bot Live</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      min-height: 100vh;
+      color: #fff;
+      background:
+        radial-gradient(circle at 20% 10%, rgba(80,120,255,.25), transparent 35%),
+        radial-gradient(circle at 80% 90%, rgba(180,70,255,.22), transparent 35%),
+        #070914;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      width: min(900px, 100%);
+      padding: 60px 32px;
+      text-align: center;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 28px;
+      background: rgba(18,22,40,.78);
+      box-shadow: 0 25px 80px rgba(0,0,0,.45);
+      backdrop-filter: blur(14px);
+    }
+    .badge {
+      display: inline-block;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.09);
+      color: #b9c5ff;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      margin-bottom: 22px;
+    }
+    h1 {
+      font-size: clamp(42px, 9vw, 82px);
+      line-height: .95;
+      letter-spacing: -0.05em;
+      margin-bottom: 20px;
+    }
+    .gradient {
+      background: linear-gradient(90deg, #7aa2ff, #c77dff, #ff7ab6);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    p {
+      max-width: 650px;
+      margin: 0 auto;
+      color: #aeb5c8;
+      font-size: 18px;
+      line-height: 1.6;
+    }
+    .buttons {
+      margin-top: 34px;
+      display: flex;
+      justify-content: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    a {
+      text-decoration: none;
+      font-weight: 700;
+      padding: 14px 22px;
+      border-radius: 14px;
+      transition: transform .2s ease, opacity .2s ease;
+    }
+    a:hover { transform: translateY(-2px); opacity: .9; }
+    .primary { background: #fff; color: #090b14; }
+    .secondary {
+      color: #fff;
+      border: 1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.06);
+    }
+    .features {
+      margin-top: 50px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+    .feature {
+      padding: 22px 16px;
+      border-radius: 18px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.08);
+    }
+    .feature strong { display: block; margin-bottom: 7px; }
+    .feature span { color: #969fb6; font-size: 14px; line-height: 1.4; }
+    footer { margin-top: 42px; color: #656d82; font-size: 13px; }
+    @media (max-width: 650px) {
+      .card { padding: 44px 20px; }
+      .features { grid-template-columns: 1fr; }
+      p { font-size: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="badge">Live Project</div>
+    <h1>Meme Bot <span class="gradient">Live</span></h1>
+    <p>
+      Una landing page semplice e moderna per il tuo progetto.
+      Personalizza testi, link e funzionalità direttamente nel file index.html.
+    </p>
+
+    <div class="buttons">
+      <a class="primary" href="#features">Scopri il progetto</a>
+      <a class="secondary" href="https://github.com/" target="_blank" rel="noopener">GitHub</a>
+    </div>
+
+    <section class="features" id="features">
+      <div class="feature">
+        <strong>⚡ Veloce</strong>
+        <span>Pagina statica, senza server o database.</span>
+      </div>
+      <div class="feature">
+        <strong>📱 Responsive</strong>
+        <span>Ottimizzata per smartphone, tablet e PC.</span>
+      </div>
+      <div class="feature">
+        <strong>🚀 Pronta</strong>
+        <span>Puoi pubblicarla con GitHub Pages.</span>
+      </div>
+    </section>
+
+    <footer>© 2026 Meme Bot Live</footer>
+  </main>
+</body>
+</html>
