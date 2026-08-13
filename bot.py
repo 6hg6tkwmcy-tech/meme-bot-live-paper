@@ -26,7 +26,7 @@ MIN_SCORE = 50
 
 balance = STARTING_BALANCE
 
-positions = {}
+positions = }
 
 closed_trades = []
 
