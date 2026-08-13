@@ -1,139 +1,650 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Meme Bot Live - Landing page">
-  <title>Meme Bot Live</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-      min-height: 100vh;
-      color: #fff;
-      background:
-        radial-gradient(circle at 20% 10%, rgba(80,120,255,.25), transparent 35%),
-        radial-gradient(circle at 80% 90%, rgba(180,70,255,.22), transparent 35%),
-        #070914;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-    }
-    .card {
-      width: min(900px, 100%);
-      padding: 60px 32px;
-      text-align: center;
-      border: 1px solid rgba(255,255,255,.12);
-      border-radius: 28px;
-      background: rgba(18,22,40,.78);
-      box-shadow: 0 25px 80px rgba(0,0,0,.45);
-      backdrop-filter: blur(14px);
-    }
-    .badge {
-      display: inline-block;
-      padding: 8px 14px;
-      border-radius: 999px;
-      background: rgba(255,255,255,.09);
-      color: #b9c5ff;
-      font-size: 14px;
-      font-weight: 700;
-      letter-spacing: .08em;
-      text-transform: uppercase;
-      margin-bottom: 22px;
-    }
-    h1 {
-      font-size: clamp(42px, 9vw, 82px);
-      line-height: .95;
-      letter-spacing: -0.05em;
-      margin-bottom: 20px;
-    }
-    .gradient {
-      background: linear-gradient(90deg, #7aa2ff, #c77dff, #ff7ab6);
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-    }
-    p {
-      max-width: 650px;
-      margin: 0 auto;
-      color: #aeb5c8;
-      font-size: 18px;
-      line-height: 1.6;
-    }
-    .buttons {
-      margin-top: 34px;
-      display: flex;
-      justify-content: center;
-      gap: 14px;
-      flex-wrap: wrap;
-    }
-    a {
-      text-decoration: none;
-      font-weight: 700;
-      padding: 14px 22px;
-      border-radius: 14px;
-      transition: transform .2s ease, opacity .2s ease;
-    }
-    a:hover { transform: translateY(-2px); opacity: .9; }
-    .primary { background: #fff; color: #090b14; }
-    .secondary {
-      color: #fff;
-      border: 1px solid rgba(255,255,255,.16);
-      background: rgba(255,255,255,.06);
-    }
-    .features {
-      margin-top: 50px;
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 14px;
-    }
-    .feature {
-      padding: 22px 16px;
-      border-radius: 18px;
-      background: rgba(255,255,255,.05);
-      border: 1px solid rgba(255,255,255,.08);
-    }
-    .feature strong { display: block; margin-bottom: 7px; }
-    .feature span { color: #969fb6; font-size: 14px; line-height: 1.4; }
-    footer { margin-top: 42px; color: #656d82; font-size: 13px; }
-    @media (max-width: 650px) {
-      .card { padding: 44px 20px; }
-      .features { grid-template-columns: 1fr; }
-      p { font-size: 16px; }
-    }
-  </style>
-</head>
-<body>
-  <main class="card">
-    <div class="badge">Live Project</div>
-    <h1>Meme Bot <span class="gradient">Live</span></h1>
-    <p>
-      Una landing page semplice e moderna per il tuo progetto.
-      Personalizza testi, link e funzionalità direttamente nel file index.html.
-    </p>
+    <meta charset="UTF-8">
 
-    <div class="buttons">
-      <a class="primary" href="#features">Scopri il progetto</a>
-      <a class="secondary" href="https://github.com/" target="_blank" rel="noopener">GitHub</a>
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <meta
+        name="theme-color"
+        content="#09090b"
+    >
+
+    <title>Meme Bot Live</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family:
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                sans-serif;
+
+            background: #09090b;
+            color: #f4f4f5;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* HEADER */
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .brand h1 {
+            font-size: 26px;
+            font-weight: 800;
+        }
+
+        .brand p {
+            margin-top: 5px;
+            color: #a1a1aa;
+            font-size: 13px;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 13px;
+            border: 1px solid #27272a;
+            border-radius: 999px;
+            background: #111113;
+            font-size: 13px;
+        }
+
+        .dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: #22c55e;
+            box-shadow: 0 0 10px #22c55e;
+        }
+
+        /* CARDS */
+
+        .grid {
+            display: grid;
+            grid-template-columns:
+                repeat(4, 1fr);
+
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+
+        .card {
+            background: #111113;
+            border: 1px solid #27272a;
+            border-radius: 16px;
+            padding: 18px;
+        }
+
+        .label {
+            color: #a1a1aa;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+
+        .value {
+            font-size: 25px;
+            font-weight: 800;
+        }
+
+        .small {
+            color: #71717a;
+            font-size: 11px;
+            margin-top: 5px;
+        }
+
+        /* MAIN */
+
+        .section {
+            background: #111113;
+            border: 1px solid #27272a;
+            border-radius: 16px;
+            padding: 18px;
+            margin-bottom: 18px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .section-title {
+            font-size: 17px;
+            font-weight: 750;
+        }
+
+        .badge {
+            padding: 6px 9px;
+            border-radius: 8px;
+            background: #18181b;
+            color: #a1a1aa;
+            font-size: 11px;
+        }
+
+        /* POSITIONS */
+
+        .position {
+            border: 1px solid #27272a;
+            background: #0d0d0f;
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 10px;
+        }
+
+        .position:last-child {
+            margin-bottom: 0;
+        }
+
+        .position-top {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .token-name {
+            font-weight: 750;
+        }
+
+        .token-symbol {
+            color: #71717a;
+            font-size: 12px;
+            margin-top: 3px;
+        }
+
+        .profit {
+            color: #22c55e;
+            font-weight: 750;
+        }
+
+        .loss {
+            color: #ef4444;
+            font-weight: 750;
+        }
+
+        .position-info {
+            display: grid;
+            grid-template-columns:
+                repeat(4, 1fr);
+
+            gap: 10px;
+            margin-top: 13px;
+        }
+
+        .info-box {
+            background: #111113;
+            border-radius: 9px;
+            padding: 9px;
+        }
+
+        .info-label {
+            color: #71717a;
+            font-size: 10px;
+        }
+
+        .info-value {
+            margin-top: 3px;
+            font-size: 12px;
+            font-weight: 650;
+        }
+
+        /* ACTIVITY */
+
+        .activity {
+            max-height: 320px;
+            overflow-y: auto;
+        }
+
+        .event {
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+            padding: 12px 0;
+            border-bottom: 1px solid #1f1f22;
+        }
+
+        .event:last-child {
+            border-bottom: none;
+        }
+
+        .event-main {
+            font-size: 13px;
+        }
+
+        .event-time {
+            color: #71717a;
+            font-size: 11px;
+            white-space: nowrap;
+        }
+
+        .buy {
+            color: #22c55e;
+        }
+
+        .sell {
+            color: #ef4444;
+        }
+
+        .neutral {
+            color: #a1a1aa;
+        }
+
+        /* EMPTY */
+
+        .empty {
+            text-align: center;
+            padding: 35px 15px;
+            color: #71717a;
+            font-size: 13px;
+        }
+
+        /* FOOTER */
+
+        footer {
+            text-align: center;
+            color: #52525b;
+            font-size: 11px;
+            padding: 10px 0 25px;
+        }
+
+        /* MOBILE */
+
+        @media (max-width: 800px) {
+
+            .container {
+                padding: 14px;
+            }
+
+            header {
+                align-items: flex-start;
+            }
+
+            .brand h1 {
+                font-size: 22px;
+            }
+
+            .grid {
+                grid-template-columns:
+                    repeat(2, 1fr);
+            }
+
+            .position-info {
+                grid-template-columns:
+                    repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 480px) {
+
+            header {
+                flex-direction: column;
+            }
+
+            .status {
+                align-self: flex-start;
+            }
+
+            .grid {
+                grid-template-columns:
+                    1fr 1fr;
+
+                gap: 9px;
+            }
+
+            .card {
+                padding: 14px;
+            }
+
+            .value {
+                font-size: 21px;
+            }
+
+            .section {
+                padding: 14px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <!-- HEADER -->
+
+    <header>
+
+        <div class="brand">
+            <h1>🤖 Meme Bot Live</h1>
+
+            <p>
+                Paper trading • Solana • PumpPortal
+            </p>
+        </div>
+
+        <div class="status">
+            <span class="dot"></span>
+            <span id="connectionStatus">
+                BOT ONLINE
+            </span>
+        </div>
+
+    </header>
+
+
+    <!-- DASHBOARD -->
+
+    <div class="grid">
+
+        <div class="card">
+            <div class="label">
+                PAPER BALANCE
+            </div>
+
+            <div
+                class="value"
+                id="balance"
+            >
+                $100.00
+            </div>
+
+            <div class="small">
+                Capitale simulato
+            </div>
+        </div>
+
+
+        <div class="card">
+            <div class="label">
+                TOKEN ANALIZZATI
+            </div>
+
+            <div
+                class="value"
+                id="tokens"
+            >
+                0
+            </div>
+
+            <div class="small">
+                Scanner attivo
+            </div>
+        </div>
+
+
+        <div class="card">
+            <div class="label">
+                PAPER BUY
+            </div>
+
+            <div
+                class="value"
+                id="buys"
+            >
+                0
+            </div>
+
+            <div class="small">
+                Operazioni simulate
+            </div>
+        </div>
+
+
+        <div class="card">
+            <div class="label">
+                PAPER SELL
+            </div>
+
+            <div
+                class="value"
+                id="sells"
+            >
+                0
+            </div>
+
+            <div class="small">
+                Operazioni chiuse
+            </div>
+        </div>
+
     </div>
 
-    <section class="features" id="features">
-      <div class="feature">
-        <strong>⚡ Veloce</strong>
-        <span>Pagina statica, senza server o database.</span>
-      </div>
-      <div class="feature">
-        <strong>📱 Responsive</strong>
-        <span>Ottimizzata per smartphone, tablet e PC.</span>
-      </div>
-      <div class="feature">
-        <strong>🚀 Pronta</strong>
-        <span>Puoi pubblicarla con GitHub Pages.</span>
-      </div>
+
+    <!-- OPEN POSITIONS -->
+
+    <section class="section">
+
+        <div class="section-header">
+
+            <div class="section-title">
+                Posizioni aperte
+            </div>
+
+            <div
+                class="badge"
+                id="positionCount"
+            >
+                0 / 5
+            </div>
+
+        </div>
+
+        <div id="positions">
+
+            <div class="empty">
+                Nessuna posizione aperta.
+                <br>
+                Il bot sta cercando opportunità.
+            </div>
+
+        </div>
+
     </section>
 
-    <footer>© 2026 Meme Bot Live</footer>
-  </main>
+
+    <!-- ACTIVITY -->
+
+    <section class="section">
+
+        <div class="section-header">
+
+            <div class="section-title">
+                Attività del bot
+            </div>
+
+            <div class="badge">
+                LIVE
+            </div>
+
+        </div>
+
+        <div
+            class="activity"
+            id="activity"
+        >
+
+            <div class="event">
+
+                <div class="event-main neutral">
+                    Bot inizializzato in paper trading
+                </div>
+
+                <div class="event-time">
+                    --:--
+                </div>
+
+            </div>
+
+            <div class="event">
+
+                <div class="event-main neutral">
+                    In attesa dei nuovi token...
+                </div>
+
+                <div class="event-time">
+                    --:--
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <footer>
+        Meme Bot Live • PAPER TRADING • No real transactions
+    </footer>
+
+</div>
+
+
+<script>
+
+    /*
+     * ========================================================
+     * DASHBOARD FRONTEND
+     * ========================================================
+     *
+     * Questa prima versione prepara la dashboard.
+     *
+     * I dati reali verranno collegati al backend
+     * nel prossimo passaggio.
+     *
+     * Nessuna transazione reale viene effettuata.
+     */
+
+
+    function setText(id, value) {
+
+        const element =
+            document.getElementById(id);
+
+        if (element) {
+            element.textContent = value;
+        }
+    }
+
+
+    function addActivity(
+        message,
+        type = "neutral"
+    ) {
+
+        const container =
+            document.getElementById(
+                "activity"
+            );
+
+        if (!container) {
+            return;
+        }
+
+        const event =
+            document.createElement(
+                "div"
+            );
+
+        event.className = "event";
+
+        const main =
+            document.createElement(
+                "div"
+            );
+
+        main.className =
+            "event-main " + type;
+
+        main.textContent =
+            message;
+
+        const time =
+            document.createElement(
+                "div"
+            );
+
+        time.className =
+            "event-time";
+
+        time.textContent =
+            new Date().toLocaleTimeString(
+                "it-IT",
+                {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit"
+                }
+            );
+
+        event.appendChild(main);
+        event.appendChild(time);
+
+        container.prepend(event);
+
+        while (
+            container.children.length > 30
+        ) {
+
+            container.removeChild(
+                container.lastChild
+            );
+        }
+    }
+
+
+    function setOnline() {
+
+        setText(
+            "connectionStatus",
+            "BOT ONLINE"
+        );
+    }
+
+
+    function initializeDashboard() {
+
+        setOnline();
+
+        addActivity(
+            "Dashboard caricata correttamente",
+            "neutral"
+        );
+
+        addActivity(
+            "Paper trading attivo",
+            "neutral"
+        );
+    }
+
+
+    initializeDashboard();
+
+</script>
+
 </body>
 </html>
