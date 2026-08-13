@@ -5,17 +5,24 @@ from pathlib import Path
 from bot import scanner
 
 
+HOST = "0.0.0.0"
+DEFAULT_PORT = 10000
+
+
 async def http_handler(reader, writer):
+
     try:
+
         request = await reader.read(4096)
 
         if not request:
             return
 
-        request_line = request.decode(
-            "utf-8",
-            errors="ignore"
-        ).splitlines()[0]
+        request_line = (
+            request
+            .decode("utf-8", errors="ignore")
+            .splitlines()[0]
+        )
 
         parts = request_line.split(" ")
 
@@ -28,44 +35,33 @@ async def http_handler(reader, writer):
 
             file_path = Path("index.html")
 
-            if file_path.exists():
-
-                body = file_path.read_bytes()
-
-                headers = (
-                    b"HTTP/1.1 200 OK\r\n"
-                    b"Content-Type: text/html; charset=utf-8\r\n"
-                    b"Content-Length: "
-                    + str(len(body)).encode()
-                    + b"\r\n"
-                    b"Connection: close\r\n"
-                    b"\r\n"
-                )
-
-                writer.write(
-                    headers + body
-                )
-
-                await writer.drain()
-
-            else:
+            if not file_path.exists():
 
                 body = b"index.html not found"
 
                 response = (
                     b"HTTP/1.1 404 Not Found\r\n"
-                    b"Content-Type: text/plain\r\n"
+                    b"Content-Type: text/plain; charset=utf-8\r\n"
                     b"Content-Length: "
                     + str(len(body)).encode()
                     + b"\r\n"
-                    b"Connection: close\r\n"
-                    b"\r\n"
+                    b"Connection: close\r\n\r\n"
                     + body
                 )
 
-                writer.write(response)
+            else:
 
-                await writer.drain()
+                body = file_path.read_bytes()
+
+                response = (
+                    b"HTTP/1.1 200 OK\r\n"
+                    b"Content-Type: text/html; charset=utf-8\r\n"
+                    b"Content-Length: "
+                    + str(len(body)).encode()
+                    + b"\r\n"
+                    b"Connection: close\r\n\r\n"
+                    + body
+                )
 
         else:
 
@@ -73,21 +69,20 @@ async def http_handler(reader, writer):
 
             response = (
                 b"HTTP/1.1 200 OK\r\n"
-                b"Content-Type: text/plain\r\n"
+                b"Content-Type: text/plain; charset=utf-8\r\n"
                 b"Content-Length: 2\r\n"
-                b"Connection: close\r\n"
-                b"\r\n"
+                b"Connection: close\r\n\r\n"
                 b"OK"
             )
 
-            writer.write(response)
+        writer.write(response)
 
-            await writer.drain()
+        await writer.drain()
 
     except Exception as error:
 
         print(
-            f"HTTP error: {error}",
+            f"HTTP ERROR: {error}",
             flush=True
         )
 
@@ -103,36 +98,32 @@ async def http_handler(reader, writer):
 
 async def main():
 
-    print(
-        "DEBUG: MAIN AVVIATO",
-        flush=True
-    )
-
     port = int(
         os.environ.get(
             "PORT",
-            "10000"
+            DEFAULT_PORT
         )
     )
 
     print(
-        f"DEBUG: PORT = {port}",
+        "SERVER.PY CARICATO",
+        flush=True
+    )
+
+    print(
+        f"Starting web server on "
+        f"{HOST}:{port}",
         flush=True
     )
 
     server = await asyncio.start_server(
         http_handler,
-        "0.0.0.0",
+        HOST,
         port
     )
 
     print(
-        f"🌐 Web server running on port {port}",
-        flush=True
-    )
-
-    print(
-        "DEBUG: AVVIO SCANNER...",
+        f"WEB SERVER RUNNING ON PORT {port}",
         flush=True
     )
 
@@ -144,11 +135,6 @@ async def main():
 
 if __name__ == "__main__":
 
-    print(
-        "DEBUG: SERVER.PY CARICATO",
-        flush=True
-    )
-
     try:
 
         asyncio.run(main())
@@ -156,13 +142,13 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
 
         print(
-            "🛑 Server stopped",
+            "SERVER STOPPED",
             flush=True
         )
 
     except Exception as error:
 
         print(
-            f"🔥 FATAL SERVER ERROR: {error}",
+            f"FATAL SERVER ERROR: {error}",
             flush=True
         )
