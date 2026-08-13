@@ -1,132 +1,514 @@
 import asyncio
-
 import json
-
+import urllib.request
 import websockets
-
 from datetime import datetime
 
-# ==========================================
+# ============================================================
+# MEME BOT LIVE — PAPER TRADING
+# ============================================================
+# SOLO SIMULAZIONE
+# Nessun wallet
+# Nessuna chiave privata
+# Nessuna transazione reale
+# ============================================================
 
-# PAPER TRADING
 
-# ==========================================
+# ============================================================
+# CONFIGURAZIONE
+# ============================================================
 
 STARTING_BALANCE = 100.00
-
 POSITION_SIZE = 10.00
 
-TAKE_PROFIT = 0.30
-
-STOP_LOSS = -0.20
+TAKE_PROFIT = 0.30       # +30%
+STOP_LOSS = -0.20        # -20%
 
 MAX_POSITIONS = 5
+MIN_SCORE = 60
 
-MIN_SCORE = 50
+MAX_TOKEN_AGE_MINUTES = 60
+
+PUMPPORTAL_WS = "wss://pumpportal.fun/api/data"
+
+DEXSCREENER_URL = (
+    "https://api.dexscreener.com/token-pairs/v1/solana/"
+)
+
+
+# ============================================================
+# STATO PAPER TRADING
+# ============================================================
 
 balance = STARTING_BALANCE
 
-positions = []
+positions = {}
 
 closed_trades = []
 
-WS_URL = "wss://pumpportal.fun/api/data"
+analyzed_tokens = 0
 
-# ==========================================
+buy_count = 0
 
-# TOKEN SCORING
+sell_count = 0
 
-# ==========================================
 
-def score_token(data):
+# ============================================================
+# UTILITÀ
+# ============================================================
+
+def now():
+    return datetime.now().strftime("%H:%M:%S")
+
+
+def safe_float(value, default=0.0):
+    try:
+        if value is None:
+            return default
+
+        return float(value)
+
+    except (TypeError, ValueError):
+        return default
+
+
+def clamp(value, minimum=0, maximum=100):
+    return max(minimum, min(value, maximum))
+
+
+# ============================================================
+# DEX SCREENER
+# ============================================================
+
+def fetch_dex_data_sync(mint):
+    """
+    Recupera le coppie DEX del token da DEX Screener.
+    Viene eseguito in un thread per non bloccare l'event loop.
+    """
+
+    try:
+        url = DEXSCREENER_URL + mint
+
+        request = urllib.request.Request(
+            url,
+            headers={
+                "User-Agent": "MemeBotLive/1.0"
+            }
+        )
+
+        with urllib.request.urlopen(
+            request,
+            timeout=8
+        ) as response:
+
+            raw = response.read().decode("utf-8")
+
+            data = json.loads(raw)
+
+        if not isinstance(data, list):
+            return None
+
+        if not data:
+            return None
+
+        valid_pairs = []
+
+        for pair in data:
+
+            liquidity = safe_float(
+                pair.get("liquidity", {}).get("usd")
+            )
+
+            if liquidity > 0:
+                valid_pairs.append(pair)
+
+        if not valid_pairs:
+            return None
+
+        valid_pairs.sort(
+            key=lambda pair: safe_float(
+                pair.get("liquidity", {}).get("usd")
+            ),
+            reverse=True
+        )
+
+        return valid_pairs[0]
+
+    except Exception as error:
+
+        print(
+            f"⚠️ DEX Screener error: {error}"
+        )
+
+        return None
+
+
+async def fetch_dex_data(mint):
+
+    return await asyncio.to_thread(
+        fetch_dex_data_sync,
+        mint
+    )
+
+
+# ============================================================
+# ESTRAZIONE DATI DEX
+# ============================================================
+
+def extract_market_data(pair):
+
+    if not pair:
+        return None
+
+    liquidity = safe_float(
+        pair.get("liquidity", {}).get("usd")
+    )
+
+    volume_5m = safe_float(
+        pair.get("volume", {}).get("m5")
+    )
+
+    volume_1h = safe_float(
+        pair.get("volume", {}).get("h1")
+    )
+
+    price_change_5m = safe_float(
+        pair.get("priceChange", {}).get("m5")
+    )
+
+    price_change_1h = safe_float(
+        pair.get("priceChange", {}).get("h1")
+    )
+
+    txns_5m = pair.get(
+        "txns", {}
+    ).get("m5", {})
+
+    buys_5m = int(
+        safe_float(
+            txns_5m.get("buys")
+        )
+    )
+
+    sells_5m = int(
+        safe_float(
+            txns_5m.get("sells")
+        )
+    )
+
+    price = safe_float(
+        pair.get("priceUsd")
+    )
+
+    market_cap = safe_float(
+        pair.get("marketCap")
+    )
+
+    fdv = safe_float(
+        pair.get("fdv")
+    )
+
+    pair_created = pair.get(
+        "pairCreatedAt"
+    )
+
+    return {
+        "price": price,
+        "liquidity": liquidity,
+        "volume_5m": volume_5m,
+        "volume_1h": volume_1h,
+        "price_change_5m": price_change_5m,
+        "price_change_1h": price_change_1h,
+        "buys_5m": buys_5m,
+        "sells_5m": sells_5m,
+        "market_cap": market_cap,
+        "fdv": fdv,
+        "pair_created_at": pair_created,
+        "dex": pair.get("dexId"),
+        "pair_address": pair.get("pairAddress"),
+    }
+
+
+# ============================================================
+# RISK SCORE
+# ============================================================
+
+def calculate_risk(market):
+
+    if not market:
+        return 100
+
+    liquidity = market["liquidity"]
+
+    volume_5m = market["volume_5m"]
+
+    market_cap = market["market_cap"]
+
+    buys = market["buys_5m"]
+
+    sells = market["sells_5m"]
+
+    risk = 0
+
+    # Liquidità troppo bassa
+    if liquidity < 5_000:
+        risk += 35
+
+    elif liquidity < 15_000:
+        risk += 20
+
+    elif liquidity < 30_000:
+        risk += 10
+
+    # Volume molto basso
+    if volume_5m < 1_000:
+        risk += 20
+
+    elif volume_5m < 5_000:
+        risk += 10
+
+    # Market cap estremamente basso
+    if market_cap > 0 and market_cap < 20_000:
+        risk += 10
+
+    # Pressione di vendita
+    total_txns = buys + sells
+
+    if total_txns >= 10:
+
+        sell_ratio = sells / total_txns
+
+        if sell_ratio > 0.70:
+            risk += 25
+
+        elif sell_ratio > 0.60:
+            risk += 15
+
+    return clamp(risk, 0, 100)
+
+
+# ============================================================
+# FOMO / MOMENTUM SCORE
+# ============================================================
+
+def calculate_fomo(market):
+
+    if not market:
+        return 0
 
     score = 0
 
-    name = str(data.get("name", "")).strip()
+    price_5m = market["price_change_5m"]
 
-    symbol = str(data.get("symbol", "")).strip()
+    price_1h = market["price_change_1h"]
 
-    if len(name) >= 3:
+    volume_5m = market["volume_5m"]
 
-        score += 10
+    buys = market["buys_5m"]
 
-    if len(symbol) >= 2:
+    sells = market["sells_5m"]
 
-        score += 10
+    total = buys + sells
 
-    if data.get("uri"):
-
+    # Momentum prezzo
+    if 2 <= price_5m <= 10:
         score += 20
 
-    if data.get("twitter"):
-
+    elif 10 < price_5m <= 25:
         score += 15
 
-    if data.get("telegram"):
+    elif price_5m > 25:
+        # Movimento troppo verticale:
+        # possibile ingresso tardivo
+        score += 5
 
+    elif price_5m > 0:
+        score += 8
+
+    # Momentum 1h
+    if 5 <= price_1h <= 40:
         score += 10
+
+    elif price_1h > 40:
+        score += 5
+
+    # Volume
+    if volume_5m >= 50_000:
+        score += 15
+
+    elif volume_5m >= 20_000:
+        score += 12
+
+    elif volume_5m >= 5_000:
+        score += 7
+
+    # Buy pressure
+    if total >= 10:
+
+        buy_ratio = buys / total
+
+        if buy_ratio >= 0.70:
+            score += 15
+
+        elif buy_ratio >= 0.60:
+            score += 10
+
+        elif buy_ratio >= 0.55:
+            score += 5
+
+    return clamp(score, 0, 60)
+
+
+# ============================================================
+# TOKEN QUALITY
+# ============================================================
+
+def calculate_token_quality(data):
+
+    score = 0
+
+    name = str(
+        data.get("name", "")
+    ).strip()
+
+    symbol = str(
+        data.get("symbol", "")
+    ).strip()
+
+    if len(name) >= 3:
+        score += 5
+
+    if len(symbol) >= 2:
+        score += 5
+
+    if data.get("uri"):
+        score += 5
+
+    if data.get("twitter"):
+        score += 5
+
+    if data.get("telegram"):
+        score += 5
 
     if data.get("website"):
-
-        score += 10
+        score += 5
 
     suspicious_words = [
-
         "test",
-
         "scam",
-
         "rug",
-
-        "fake"
-
+        "fake",
+        "airdrop",
+        "free"
     ]
 
-    text = f"{name} {symbol}".lower()
+    text = (
+        f"{name} {symbol}"
+    ).lower()
 
-    if any(word in text for word in suspicious_words):
+    for word in suspicious_words:
 
+        if word in text:
+            score -= 20
+
+    return clamp(score, 0, 30)
+
+
+# ============================================================
+# SCORE COMPLESSIVO
+# ============================================================
+
+def score_token(data, market):
+
+    quality = calculate_token_quality(
+        data
+    )
+
+    fomo = calculate_fomo(
+        market
+    )
+
+    risk = calculate_risk(
+        market
+    )
+
+    # Score principale
+    score = quality + fomo
+
+    # Penalità rischio
+    if risk >= 70:
         score -= 40
 
-    return max(0, min(score, 100))
+    elif risk >= 50:
+        score -= 25
 
-# ==========================================
+    elif risk >= 30:
+        score -= 10
 
+    # Bonus liquidità
+    if market:
+
+        liquidity = market["liquidity"]
+
+        if liquidity >= 50_000:
+            score += 10
+
+        elif liquidity >= 25_000:
+            score += 7
+
+        elif liquidity >= 10_000:
+            score += 4
+
+    return {
+        "score": clamp(score),
+        "quality": quality,
+        "fomo": fomo,
+        "risk": risk
+    }
+
+
+# ============================================================
 # PAPER BUY
+# ============================================================
 
-# ==========================================
-
-def paper_buy(data):
+def paper_buy(data, market, analysis):
 
     global balance
+    global buy_count
 
     mint = data.get("mint")
 
     if not mint:
-
-        return
+        return False
 
     if mint in positions:
-
-        return
+        return False
 
     if balance < POSITION_SIZE:
-
-        return
+        return False
 
     if len(positions) >= MAX_POSITIONS:
+        return False
 
-        return
-
-    score = score_token(data)
+    score = analysis["score"]
 
     if score < MIN_SCORE:
+        return False
 
-        return
+    price = market["price"]
 
-    name = data.get("name", "Unknown")
+    if price <= 0:
+        return False
 
-    symbol = data.get("symbol", "???")
+    name = data.get(
+        "name",
+        "Unknown"
+    )
+
+    symbol = data.get(
+        "symbol",
+        "???"
+    )
 
     balance -= POSITION_SIZE
 
@@ -138,87 +520,125 @@ def paper_buy(data):
 
         "mint": mint,
 
-        "entry_time": datetime.now().strftime("%H:%M:%S"),
+        "entry_time": now(),
 
         "amount": POSITION_SIZE,
 
         "score": score,
 
-        "entry_price": None,
+        "entry_price": price,
 
-        "last_price": None
+        "last_price": price,
+
+        "best_price": price,
+
+        "liquidity": market["liquidity"],
+
+        "volume_5m": market["volume_5m"],
+
+        "fomo": analysis["fomo"],
+
+        "risk": analysis["risk"],
 
     }
 
+    buy_count += 1
+
     print()
 
-    print("====================================")
+    print("==========================================")
 
     print("🟢 PAPER BUY")
 
-    print(f"Token: {name} (${symbol})")
+    print(
+        f"Token: {name} (${symbol})"
+    )
 
-    print(f"Score: {score}/100")
+    print(
+        f"Score: {score}/100"
+    )
 
-    print(f"Amount: ${POSITION_SIZE:.2f}")
+    print(
+        f"FOMO: {analysis['fomo']}/60"
+    )
 
-    print(f"Balance: ${balance:.2f}")
+    print(
+        f"Risk: {analysis['risk']}/100"
+    )
 
-    print("====================================")
+    print(
+        f"Liquidity: ${market['liquidity']:,.2f}"
+    )
+
+    print(
+        f"Volume 5m: ${market['volume_5m']:,.2f}"
+    )
+
+    print(
+        f"Entry: ${price:.10f}"
+    )
+
+    print(
+        f"Amount: ${POSITION_SIZE:.2f}"
+    )
+
+    print(
+        f"Balance: ${balance:.2f}"
+    )
+
+    print("==========================================")
 
     print()
 
-# ==========================================
+    return True
 
+
+# ============================================================
 # PAPER SELL
+# ============================================================
 
-# ==========================================
-
-def close_position(mint, exit_price, reason):
+def close_position(
+    mint,
+    exit_price,
+    reason
+):
 
     global balance
+    global sell_count
 
-    position = positions.get(mint)
-
-    if not position:
-
-        return
-
-    entry_price = position.get("entry_price")
-
-    if entry_price is None:
-
-        return
-
-    if exit_price is None:
-
-        return
-
-    try:
-
-        entry_price = float(entry_price)
-
-        exit_price = float(exit_price)
-
-    except (TypeError, ValueError):
-
-        return
-
-    if entry_price <= 0:
-
-        return
-
-    pnl_percent = (
-
-        (exit_price - entry_price)
-
-        / entry_price
-
+    position = positions.get(
+        mint
     )
 
-    pnl_dollars = POSITION_SIZE * pnl_percent
+    if not position:
+        return
 
-    balance += POSITION_SIZE + pnl_dollars
+    entry_price = safe_float(
+        position.get("entry_price")
+    )
+
+    exit_price = safe_float(
+        exit_price
+    )
+
+    if entry_price <= 0:
+        return
+
+    if exit_price <= 0:
+        return
+
+    change = (
+        exit_price - entry_price
+    ) / entry_price
+
+    pnl_dollars = (
+        POSITION_SIZE * change
+    )
+
+    balance += (
+        POSITION_SIZE +
+        pnl_dollars
+    )
 
     trade = {
 
@@ -230,145 +650,286 @@ def close_position(mint, exit_price, reason):
 
         "entry_time": position["entry_time"],
 
-        "exit_time": datetime.now().strftime("%H:%M:%S"),
+        "exit_time": now(),
 
-        "pnl_percent": pnl_percent * 100,
+        "entry_price": entry_price,
+
+        "exit_price": exit_price,
+
+        "pnl_percent": change * 100,
 
         "pnl_dollars": pnl_dollars,
 
-        "reason": reason
+        "reason": reason,
 
     }
 
-    closed_trades.append(trade)
+    closed_trades.append(
+        trade
+    )
 
     del positions[mint]
 
+    sell_count += 1
+
     print()
 
-    print("====================================")
+    print("==========================================")
 
     print("🔴 PAPER SELL")
 
-    print(f"Token: {position['name']} (${position['symbol']})")
-
-    print(f"Reason: {reason}")
-
     print(
-
-        f"P/L: ${pnl_dollars:.2f} "
-
-        f"({pnl_percent * 100:.2f}%)"
-
+        f"Token: {position['name']} "
+        f"(${position['symbol']})"
     )
 
-    print(f"Balance: ${balance:.2f}")
+    print(
+        f"Reason: {reason}"
+    )
 
-    print("====================================")
+    print(
+        f"Entry: ${entry_price:.10f}"
+    )
+
+    print(
+        f"Exit: ${exit_price:.10f}"
+    )
+
+    print(
+        f"P/L: ${pnl_dollars:.2f} "
+        f"({change * 100:.2f}%)"
+    )
+
+    print(
+        f"Balance: ${balance:.2f}"
+    )
+
+    print("==========================================")
 
     print()
 
-# ==========================================
 
-# PRICE UPDATE
+# ============================================================
+# CONTROLLO POSIZIONI
+# ============================================================
 
-# ==========================================
+async def monitor_positions():
 
-def update_position(mint, price):
+    while True:
 
-    position = positions.get(mint)
+        try:
 
-    if not position:
+            if not positions:
 
+                await asyncio.sleep(5)
+
+                continue
+
+            current_positions = list(
+                positions.keys()
+            )
+
+            for mint in current_positions:
+
+                market_pair = await fetch_dex_data(
+                    mint
+                )
+
+                if not market_pair:
+                    continue
+
+                market = extract_market_data(
+                    market_pair
+                )
+
+                if not market:
+                    continue
+
+                price = market["price"]
+
+                if price <= 0:
+                    continue
+
+                position = positions.get(
+                    mint
+                )
+
+                if not position:
+                    continue
+
+                position["last_price"] = price
+
+                if price > position["best_price"]:
+                    position["best_price"] = price
+
+                entry = position["entry_price"]
+
+                change = (
+                    price - entry
+                ) / entry
+
+                print(
+                    f"📈 {position['symbol']} "
+                    f"{change * 100:.2f}%"
+                )
+
+                if change >= TAKE_PROFIT:
+
+                    close_position(
+                        mint,
+                        price,
+                        "TAKE PROFIT"
+                    )
+
+                elif change <= STOP_LOSS:
+
+                    close_position(
+                        mint,
+                        price,
+                        "STOP LOSS"
+                    )
+
+            await asyncio.sleep(5)
+
+        except Exception as error:
+
+            print(
+                f"⚠️ Position monitor error: {error}"
+            )
+
+            await asyncio.sleep(5)
+
+
+# ============================================================
+# ANALISI TOKEN
+# ============================================================
+
+async def analyze_token(data):
+
+    global analyzed_tokens
+
+    mint = data.get("mint")
+
+    if not mint:
         return
 
-    try:
+    analyzed_tokens += 1
 
-        price = float(price)
+    name = data.get(
+        "name",
+        "Unknown"
+    )
 
-    except (TypeError, ValueError):
+    symbol = data.get(
+        "symbol",
+        "???"
+    )
 
-        return
+    print()
 
-    if price <= 0:
+    print(
+        f"[{now()}] 🔎 "
+        f"Analyzing {name} (${symbol})"
+    )
 
-        return
+    market_pair = await fetch_dex_data(
+        mint
+    )
 
-    if position["entry_price"] is None:
-
-        position["entry_price"] = price
-
-        position["last_price"] = price
+    if not market_pair:
 
         print(
-
-            f"📊 Entry price: "
-
-            f"{position['name']} = {price}"
-
+            "⚠️ No DEX Screener pair found"
         )
 
         return
 
-    position["last_price"] = price
+    market = extract_market_data(
+        market_pair
+    )
 
-    change = (
+    if not market:
 
-        (price - position["entry_price"])
+        print(
+            "⚠️ Market data unavailable"
+        )
 
-        / position["entry_price"]
+        return
 
+    analysis = score_token(
+        data,
+        market
     )
 
     print(
-
-        f"📈 {position['symbol']} "
-
-        f"{change * 100:.2f}%"
-
+        f"📊 Score: "
+        f"{analysis['score']}/100"
     )
 
-    if change >= TAKE_PROFIT:
+    print(
+        f"🔥 FOMO: "
+        f"{analysis['fomo']}/60"
+    )
 
-        close_position(
+    print(
+        f"🛡️ Risk: "
+        f"{analysis['risk']}/100"
+    )
 
-            mint,
+    print(
+        f"💧 Liquidity: "
+        f"${market['liquidity']:,.2f}"
+    )
 
-            price,
+    print(
+        f"📊 Volume 5m: "
+        f"${market['volume_5m']:,.2f}"
+    )
 
-            "TAKE PROFIT"
+    print(
+        f"📈 Price 5m: "
+        f"{market['price_change_5m']:.2f}%"
+    )
 
-        )
+    print(
+        f"💰 Market Cap: "
+        f"${market['market_cap']:,.2f}"
+    )
 
-    elif change <= STOP_LOSS:
+    # Solo paper trading
+    paper_buy(
+        data,
+        market,
+        analysis
+    )
 
-        close_position(
 
-            mint,
-
-            price,
-
-            "STOP LOSS"
-
-        )
-
-# ==========================================
-
-# SCANNER
-
-# ==========================================
+# ============================================================
+# PUMPPORTAL SCANNER
+# ============================================================
 
 async def scanner():
 
-    global balance
-
     print()
 
-    print("🚀 PAPER MEME COIN BOT STARTED")
+    print(
+        "🚀 PAPER MEME COIN BOT STARTED"
+    )
 
-    print(f"💰 Starting balance: ${balance:.2f}")
+    print(
+        f"💰 Starting balance: "
+        f"${balance:.2f}"
+    )
 
-    print(f"🎯 Minimum score: {MIN_SCORE}/100")
+    print(
+        f"🎯 Minimum score: "
+        f"{MIN_SCORE}/100"
+    )
+
+    print(
+        f"💵 Position size: "
+        f"${POSITION_SIZE:.2f}"
+    )
 
     print()
 
@@ -378,84 +939,63 @@ async def scanner():
 
             async with websockets.connect(
 
-                WS_URL,
+                PUMPPORTAL_WS,
 
                 ping_interval=20,
 
-                ping_timeout=20
+                ping_timeout=20,
+
+                close_timeout=10
 
             ) as ws:
 
-                print("✅ Connected to PumpPortal")
-
-                print("👀 Listening for new tokens...")
-
-                print()
+                print(
+                    "✅ Connected to PumpPortal"
+                )
 
                 await ws.send(
-
                     json.dumps({
-
-                        "method": "subscribeNewToken"
-
+                        "method":
+                        "subscribeNewToken"
                     })
-
                 )
+
+                print(
+                    "👀 Listening for new tokens..."
+                )
+
+                print()
 
                 async for message in ws:
 
                     try:
 
-                        data = json.loads(message)
+                        data = json.loads(
+                            message
+                        )
 
-                        mint = data.get("mint")
-
-                        if not mint:
-
+                        if not isinstance(
+                            data,
+                            dict
+                        ):
                             continue
 
-                        name = data.get(
-
-                            "name",
-
-                            "Unknown"
-
+                        mint = data.get(
+                            "mint"
                         )
 
-                        symbol = data.get(
+                        if not mint:
+                            continue
 
-                            "symbol",
-
-                            "???"
-
+                        asyncio.create_task(
+                            analyze_token(data)
                         )
-
-                        score = score_token(data)
-
-                        timestamp = datetime.now().strftime(
-
-                            "%H:%M:%S"
-
-                        )
-
-                        print(
-
-                            f"[{timestamp}] 🆕 "
-
-                            f"{name} (${symbol}) "
-
-                            f"| Score: {score}/100"
-
-                        )
-
-                        paper_buy(data)
 
                     except Exception as error:
 
                         print(
-
-                            f"⚠️ Message error: {error}"
-
+                            f"⚠️ Message error: "
+                            f"{error}"
                         )
 
         except Exception as error:
@@ -463,37 +1003,110 @@ async def scanner():
             print()
 
             print(
-
-                f"⚠️ Connection error: {error}"
-
+                f"⚠️ Connection error: "
+                f"{error}"
             )
 
-            print("🔄 Reconnecting in 5 seconds...")
+            print(
+                "🔄 Reconnecting in 5 seconds..."
+            )
 
             await asyncio.sleep(5)
 
-# ==========================================
 
+# ============================================================
+# STATUS
+# ============================================================
+
+async def status_loop():
+
+    while True:
+
+        try:
+
+            print()
+
+            print(
+                "================ BOT STATUS ================"
+            )
+
+            print(
+                f"💰 Balance: "
+                f"${balance:.2f}"
+            )
+
+            print(
+                f"📊 Tokens analyzed: "
+                f"{analyzed_tokens}"
+            )
+
+            print(
+                f"🟢 Paper buys: "
+                f"{buy_count}"
+            )
+
+            print(
+                f"🔴 Paper sells: "
+                f"{sell_count}"
+            )
+
+            print(
+                f"📦 Open positions: "
+                f"{len(positions)}/{MAX_POSITIONS}"
+            )
+
+            print(
+                f"📚 Closed trades: "
+                f"{len(closed_trades)}"
+            )
+
+            print(
+                "============================================"
+            )
+
+            await asyncio.sleep(30)
+
+        except Exception as error:
+
+            print(
+                f"⚠️ Status error: {error}"
+            )
+
+            await asyncio.sleep(30)
+
+
+# ============================================================
 # MAIN
+# ============================================================
 
-# ==========================================
+async def main():
+
+    await asyncio.gather(
+
+        scanner(),
+
+        monitor_positions(),
+
+        status_loop()
+
+    )
+
 
 if __name__ == "__main__":
 
     try:
 
-        asyncio.run(scanner())
+        asyncio.run(main())
 
     except KeyboardInterrupt:
 
         print()
 
-        print("🛑 Bot stopped")
+        print(
+            "🛑 Bot stopped"
+        )
 
         print(
-
             f"💰 Final paper balance: "
-
             f"${balance:.2f}"
-
         )
