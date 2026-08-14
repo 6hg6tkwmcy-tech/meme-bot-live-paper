@@ -5,13 +5,6 @@ from pathlib import Path
 
 print("=== SERVER.PY CARICATO ===", flush=True)
 
-try:
-    from bot import scanner
-    print("=== BOT.PY IMPORTATO OK ===", flush=True)
-except Exception:
-    print("=== ERRORE IMPORT BOT.PY ===", flush=True)
-    traceback.print_exc()
-    raise
 
 
 async def http_handler(reader, writer):
